@@ -37,8 +37,8 @@ void print(GameState game){
         if(one&game.Cell_4){ cout<<WHITE<<"4"<< RESET << BG_BLACK; }
         if(one&game.Cell_AnyBulb){ cout<<BLACK<<"."<< RESET << BG_BLACK; }
 
-        if((one&(game.Cell_On&~game.Lights))&~game.Cells_inBlack){ cout<<YELLOW<<"1"<< RESET << BG_BLACK; }
-        if((one&~(game.Cell_On))&~game.Cells_inBlack){cout<<WHITE<<"2"<< RESET << BG_BLACK; }  
+        if((one&(game.Cell_On&~game.Lights))&~game.Cells_inBlack){ cout<<YELLOW<<"."<< RESET << BG_BLACK; }
+        if((one&~(game.Cell_On))&~game.Cells_inBlack){cout<<WHITE<<"."<< RESET << BG_BLACK; }  
 
         if(one&game.Cell_On){ cout<<BG_YELLOW<<YELLOW; }
         else { cout<<BG_WHITE; }
@@ -101,7 +101,7 @@ void putLight(GameState& game){
         row = pos[0]-49;
         col = pos[1]-97;
 
-        if((0 <= row && row <= 7) && (0 <= col && col <= 8) && ((firstBit>>((row*8)+col))&~game.Cells_inBlack)){ 
+        if((0 <= row && row <= 7) && (0 <= col && col <= 7) && ((firstBit>>((row*8)+col))&~game.Cells_inBlack)){ 
 
             if((firstBit>>((row*8)+col)) &~ game.Lights){
                 game.Lights |= firstBit>>((row*8)+col);
@@ -112,9 +112,8 @@ void putLight(GameState& game){
                 illumBoard(game, false);
             }
             
-            if(victoryCondition(game)){
-                break;
-            }
+            if(victoryCondition(game)){ break; }
+            else{ cout<< "Asegurate de colocar bien las luces."<<endl<<endl; }
         }
         else{ cout<<"Posicion Invalida"<<endl; }
     }
@@ -186,13 +185,13 @@ void illumBoard(GameState& game, bool turnOn){
 
                     if(((one>>(j*8))&~game.Cells_inBlack) && down){
                         if((one>>(j*8))&game.Lights) { turnOff = false; }
-                        if((one>>(j*8))&lastCol) { down = false; }
+                        if((one>>(j*8))&lastRow) { down = false; }
                     }
                     else{ down = false; }
 
                     if(((one<<(j*8))&~game.Cells_inBlack) && up){
                         if((one<<(j*8))&game.Lights) { turnOff = false; }
-                        if((one<<(j*8))&lastCol) { up = false; }
+                        if((one<<(j*8))&firstRow) { up = false; }
                     }
                     else{ up = false; }
                 }
@@ -210,66 +209,90 @@ bool victoryCondition(GameState game){
 
     if((game.Cells_inBlack | game.Cell_On) == game.Board)
     {
+        cout<<"entre"<<endl;
         for(int i=0;i<64;i++){
 
             if(one&game.Cell_0){
-                if((one>>1)&game.Lights){ return false; }
-                if((one<<1)&game.Lights){ return false; }
-                if((one>>8)&game.Lights){ return false; }
-                if((one<<8)&game.Lights){ return false; }
+                if(((one&~lastCol)>>1)&game.Lights){ return false; }
+                if(((one&~firstCol)<<1)&game.Lights){ return false; }
+                if(((one&~lastRow)>>8)&game.Lights){ return false; }
+                if(((one&~firstRow)<<8)&game.Lights){ return false; }
 
-                cout<<"casilla de 0 ok"<<endl;
             }
             if(one&game.Cell_1){
                 int count = 0;
-                if((one>>1)&game.Lights){ count++; }
-                if((one<<1)&game.Lights){ count++; }
-                if((one>>8)&game.Lights){ count++; }
-                if((one<<8)&game.Lights){ count++; }
+                if(((one&~lastCol)>>1)&game.Lights){ count++; }
+                if(((one&~firstCol)<<1)&game.Lights){ count++; }
+                if(((one&~lastRow)>>8)&game.Lights){ count++; }
+                if(((one&~firstRow)<<8)&game.Lights){ count++; }
 
-                if(count>1){ return false; }
-                else if(count<1){ return false; }
-                else{ cout<<"casilla de 1 ok"<<endl; }
+                if(count!=1){ return false; }
             }
             if(one&game.Cell_2){
                 int count = 0;
-                if((one>>1)&game.Lights){ count++; }
-                if((one<<1)&game.Lights){ count++; }
-                if((one>>8)&game.Lights){ count++; }
-                if((one<<8)&game.Lights){ count++; }
+                if(((one&~lastCol)>>1)&game.Lights){ count++; }
+                if(((one&~firstCol)<<1)&game.Lights){ count++; }
+                if(((one&~lastRow)>>8)&game.Lights){ count++; }
+                if(((one&~firstRow)<<8)&game.Lights){ count++; }
 
-                if(count>2){ return false; }
-                else if(count<2){ return false; }
-                else{ cout<<"casilla de 2 ok"<<endl; }
+                if(count!=2){ return false; }
             }
             if(one&game.Cell_3){
                 int count = 0;
-                if((one>>1)&game.Lights){ count++; }
-                if((one<<1)&game.Lights){ count++; }
-                if((one>>8)&game.Lights){ count++; }
-                if((one<<8)&game.Lights){ count++; }
+                if(((one&~lastCol)>>1)&game.Lights){ count++; }
+                if(((one&~firstCol)<<1)&game.Lights){ count++; }
+                if(((one&~lastRow)>>8)&game.Lights){ count++; }
+                if(((one&~firstRow)<<8)&game.Lights){ count++; }
 
-                if(count>3){ return false; }
-                else if(count<3){ return false; }
-                else{ cout<<"casilla de 3 ok"<<endl; }
+                if(count!=3){ return false; }
             }
             if(one&game.Cell_4){
                 int count = 0;
-                if((one>>1)&game.Lights){ count++; }
-                if((one<<1)&game.Lights){ count++; }
-                if((one>>8)&game.Lights){ count++; }
-                if((one<<8)&game.Lights){ count++; }
+                if(((one&~lastCol)>>1)&game.Lights){ count++; }
+                if(((one&~firstCol)<<1)&game.Lights){ count++; }
+                if(((one&~lastRow)>>8)&game.Lights){ count++; }
+                if(((one&~firstRow)<<8)&game.Lights){ count++; }
 
-                if(count>4){ return false; }
-                else if(count<4){ return false; }
-                else if(count==4){ cout<<"casilla de 4 ok"<<endl; }
+                if(count!=4){ return false; }
+            }
+
+            bool up = true;
+            bool down = true;
+            bool left = true;
+            bool right = true;
+            bool haveLight = false;
+
+
+            if(one&game.Lights){
+                for(int j = 1; j < 8; j++){
+                    if(((one>>j)&~game.Cells_inBlack) && ((one>>j)&~firstCol) && (one&~lastCol) && right){
+                        if((one>>j)&game.Lights) { haveLight = true; }
+                    }
+                    else{ right = false; }
+
+                    if(((one<<j)&~game.Cells_inBlack) && ((one<<j)&~lastCol) && (one&~firstCol) && left){
+                        if((one<<j)&game.Lights) { haveLight = true; }
+                    }
+                    else{ left = false; }
+
+                    if(((one>>(j*8))&~game.Cells_inBlack) && ((one>>(j*8))&~firstRow) && (one&~lastRow) && down){
+                        if((one>>(j*8))&game.Lights) { haveLight = true; }
+                    }
+                    else{ down = false; }
+
+                    if(((one<<(j*8))&~game.Cells_inBlack) && ((one<<(j*8))&~lastRow) && (one&firstRow) && up){
+                        if((one<<(j*8))&game.Lights) { haveLight = true; }
+                    }
+                    else{ up = false; }
+                }
+                if(haveLight){ return false; }
             }
             one >>= 1;
         }
         return true;
     }
 
-    else{ return false;}
+    else{ return false; }
 }
 
 int main(){
