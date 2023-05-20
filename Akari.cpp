@@ -7,7 +7,7 @@ using namespace std;
 
 void print(GameState game){
 
-    system("clear");
+    //system("clear");
 
     uint64_t one = firstBit;
     char a = 'A';
@@ -78,6 +78,7 @@ void createBoard(GameState& game){
         else if(auxiliar[i] == '2'){ game.Cell_2 |= (firstBit>>i); }
         else if(auxiliar[i] == '3'){ game.Cell_3 |= (firstBit>>i); }
         else if(auxiliar[i] == '4'){ game.Cell_4 |= (firstBit>>i); }
+        else if(auxiliar[i] == 'L'){ game.FinalLights |= (firstBit>>i); }
     }
 
     game.Cells_inBlack = game.Cell_0|game.Cell_1|game.Cell_2|game.Cell_3|game.Cell_4|game.Cell_AnyBulb;
@@ -88,6 +89,7 @@ void createBoard(GameState& game){
 void playGame(GameState game){
     int opcion;
     while(1){
+        
         bool up = false;
         bool down = false;
         bool right = false;
@@ -108,6 +110,9 @@ void playGame(GameState game){
             else{ cout<<"Invalido"<<endl; }
         }
         moveRobot(game, opcion);
+
+        if(victoryCondition(game)){ break; }
+        
     }
 }
 
@@ -134,6 +139,53 @@ bool neighbor(GameState game, int move){
     }
 
     return false;
+}
+
+vector<uint64_t> getAdjacentCells(GameState game) {
+
+    vector<uint64_t> adjCells;
+    
+    if(((game.robot &~ firstRow) << 8 ) &~ game.Cells_inBlack){ adjCells.push_back(game.robot << 8); }
+    if(((game.robot &~ lastRow) >> 8 ) &~ game.Cells_inBlack){ adjCells.push_back(game.robot >> 8); }
+    if(((game.robot &~ firstCol) << 1 ) &~ game.Cells_inBlack){ adjCells.push_back(game.robot << 1); }
+    if(((game.robot &~ lastCol) >> 1 ) &~ game.Cells_inBlack){ adjCells.push_back(game.robot >> 1); }
+
+    return adjCells;
+}
+
+vector<GameState> getAdjacentCellsGS(GameState game) {
+
+    vector<GameState> adjCells;
+    
+    if(((game.robot &~ firstRow) << 8 ) &~ game.Cells_inBlack){
+        cout<<"puede arriba"<<endl;
+        auto aux = game;
+        aux.robot = aux.robot << 8 ;
+        adjCells.push_back(aux);
+    }
+
+    if(((game.robot &~ lastRow) >> 8 ) &~ game.Cells_inBlack){
+        cout<<"puede abajo"<<endl;
+        auto aux = game;
+        aux.robot = aux.robot >> 8 ;
+        adjCells.push_back(aux);
+    }
+
+    if(((game.robot &~ firstCol) << 1 ) &~ game.Cells_inBlack){
+        cout<<"puede izq"<<endl;
+        auto aux = game;
+        aux.robot = aux.robot << 1 ;
+        adjCells.push_back(aux);
+    }
+
+    if(((game.robot &~ lastCol) >> 1 ) &~ game.Cells_inBlack){
+        cout<<"puede der"<<endl;
+        auto aux = game;
+        aux.robot = aux.robot >> 1 ;
+        adjCells.push_back(aux);
+    }
+
+    return adjCells;
 }
 
 void moveRobot(GameState& game, int move){
@@ -168,6 +220,73 @@ void moveRobot(GameState& game, int move){
 
 }
 
+void bfs(GameState game, uint64_t startLight, uint64_t goalLight) {
+    set<uint64_t> visited;
+    set<GameState> visitedStates;
+    queue<uint64_t> q;
+    queue<GameState> qGS;
+
+    q.push(startLight);
+    visited.insert(startLight);
+    qGS.push(game);
+    visitedStates.insert(game);
+    
+
+    while (!qGS.empty()) {
+        GameState actualState = qGS.front();
+        qGS.pop();
+        // Realizar acciones con el nodo actual
+        if(isLightPos(actualState)){ 
+            putLight(actualState, actualState.robot); 
+        }
+        
+        
+        // Obtener las celdas adyacentes al robot
+        vector<GameState> adjCellsGS = getAdjacentCellsGS(actualState);
+        
+        print(actualState);
+        
+        if(actualState.Lights == goalLight)
+        {
+            cout<<"termine waxin"<<endl;
+            break;
+        }
+        
+        for (auto adjCell : adjCellsGS) {
+            if (visitedStates.find(adjCell) == visitedStates.end()) {
+                GameState newState = actualState;
+                newState.robot = adjCell.robot;
+                // Realizar modificaciones en el nuevo estado
+
+                if(victoryCondition(newState)){ break; }
+
+                qGS.push(newState);
+                visitedStates.insert(adjCell);
+            }
+        }
+
+        // vector<uint64_t> adjCells = getAdjacentCells(actualState);
+        // for (auto adjCell : adjCells) {
+        //     if (visited.find(adjCell) == visited.end()) {
+        //         GameState newState = actualState;
+        //         newState.robot = adjCell;
+        //         // Realizar modificaciones en el nuevo estado
+
+        //         //if(victoryCondition(newState)){ break; }
+
+        //         q.push(newState.Lights);
+        //         visited.insert(adjCell);
+        //         actualState = newState;
+        //     }
+        // }
+     }
+}
+
+bool isLightPos(GameState game){
+    if(game.robot & game.FinalLights){ return true; }
+    return false;
+}
+
 void putLight(GameState& game, uint64_t newLight){
 
     if(newLight &~ game.Lights){
@@ -178,8 +297,6 @@ void putLight(GameState& game, uint64_t newLight){
         game.Lights ^= newLight;
         illumBoard(game, false);
     }
-    
-    if(victoryCondition(game)){ cout<<"Ganaste";}
 
 }
 
@@ -325,7 +442,6 @@ bool victoryCondition(GameState game){
             bool right = true;
             bool haveLight = false;
 
-
             if(one&game.Lights){
                 for(int j = 1; j < 8; j++){
                     if(((one>>j)&~game.Cells_inBlack) && ((one>>j)&~firstCol) && (one&~lastCol) && right){
@@ -364,7 +480,9 @@ int main(){
 
     createBoard(game);
 
-    playGame(game);
+    //playGame(game);
+
+    bfs(game, game.Lights, game.FinalLights);
 
     //putLight(game, 0x0);
 

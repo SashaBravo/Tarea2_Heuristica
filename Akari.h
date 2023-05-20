@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#include <queue>
+#include <set>
 #include <chrono>
 #include <ctime>
 #include <stddef.h>
@@ -36,20 +38,22 @@ uint64_t lastCol=0x0101010101010101;
 
 //Tableros de la pagina /* krazydad.com/play/akari */
 vector<string> differentsBoards = {
-    ".1x..12..........xx..1x..................x1..x2..........xx..xx.", //  Tablero 1   1-1-1
-    "....xx...4....2.x.x..2..x..............x..3..x.x.3....3...xx....", //  Tablero 2   1-1-2
-    ".xxx1xx............0x...x1....1x.2....1...................1xx2..", //  Tablero 3   2-50-16
-    "1.x1x..x...........x....x..x..1..2..2..x....x...........1..x1x.1", //  Tablero 4   2-50-17
-    "......x.1xx...0.....x.1...3..........3...2.x.....x...xx1.x......", //  Tablero 5   2-53-17
-    "..x..x....x.2...2.....3x.x............x.x3.....x...x.1....1..x..", //  Tablero 6   1-53-17
-    "...x.x2.x.2.....x.....x....1x..x2..11....x.....x.....x.2.1x.x...", //  Tablero 7   2-67-15
-    ".xxx...x....3...0....1.....x......x.2...1...x.3......4....0....."  //  Tablero 8   2-67-16
+    "L1x.L12L......L..xx..1x......L........L..x1L.x2.......L..xx..xx.", //  Tablero 1   1-1-1
+    ".L..xxL.L4L...2LxLx.L2..x....L....L....x..3L.xLxL3L...3L.Lxx..L.", //  Tablero 2   1-1-2
+    "Lxxx1xxL....L....L.0x.L.x1..L.1xL2L...1L...L.........L...L1xx2L.", //  Tablero 3   2-50-16
+    "1Lx1x.Lx...L....L..x....x..xL.1LL2L.2L.x...Lx..L....L...1L.x1xL1", //  Tablero 4   2-50-17
+    "L.....xL1xx.L.0...L.xL1..L3L........L3L.L2Lx.L...x.L.xx1.x.....L", //  Tablero 5   2-53-17
+    ".Lx.Lx.LL.xL2.L.2....L3xLx....L..L....xLx3L....x.L.xL1.LL.1L.xL.", //  Tablero 6   1-53-17
+    "..LxLx2LxL2...L.x..L..x.L..1xL.x2.L11..LLx..L..x.L...xL2.1xLx..L", //  Tablero 7   2-67-15
+    "LxxxL..x...L3L..0.L..1.L.L.xL...L.xL2.L.1.L.xL3.....L4L.L.0..L.."  //  Tablero 8   2-67-16
     };
 
 struct GameState{
     uint64_t Board = full;
 
     uint64_t Lights = 0x0;
+    uint64_t FinalLights = 0x0;
+
     uint64_t Cell_On = 0x0;
 
     uint64_t Cells_inBlack = 0x0;
@@ -62,9 +66,13 @@ struct GameState{
     uint64_t Cell_4 = 0x0;
 
     uint64_t robot = 0x0000000400000000; //la casilla 30 es blanca para todos los tableros
+
+    bool operator<(const GameState& other) const {
+        return Board < other.Board;
+    }
 };
 
-void print(GameState game, uint64_t board);
+void print(GameState game);
 void createBoard(GameState& game);
 
 void putLight(GameState& game, uint64_t newLight);
@@ -75,3 +83,8 @@ void moveRobot(GameState& game, int move);
 bool neighbor(GameState game, int move);
 
 bool victoryCondition(GameState game);
+bool isLightPos(GameState game);
+
+void bfs(GameState game, uint64_t startLight, uint64_t goalLight);
+vector<GameState> getAdjacentCellsGS(GameState game);
+vector<uint64_t> getAdjacentCells(GameState game);
