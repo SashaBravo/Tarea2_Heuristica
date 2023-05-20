@@ -60,14 +60,18 @@ struct GameState{
     uint64_t Cell_2 = 0x0;
     uint64_t Cell_3 = 0x0;
     uint64_t Cell_4 = 0x0;
-};
 
-uint64_t cellsWLight(GameState game);
+    uint64_t robot = 0x0000000400000000; //la casilla 30 es blanca para todos los tableros
+};
 
 void print(GameState game, uint64_t board);
 void createBoard(GameState& game);
 
-void putLight(GameState& game);
+void putLight(GameState& game, uint64_t newLight);
 void illumBoard(GameState& game, bool turnOn);
+
+void playGame(GameState game);
+void moveRobot(GameState& game, int move);
+bool neighbor(GameState game, int move);
 
 bool victoryCondition(GameState game);

@@ -6,6 +6,9 @@ const int COLUMNAS = 5;
 using namespace std;
 
 void print(GameState game){
+
+    system("clear");
+
     uint64_t one = firstBit;
     char a = 'A';
     cout<< "  ";
@@ -29,7 +32,8 @@ void print(GameState game){
 
         cout << "[";
 
-        if(one&game.Lights){ cout<<BLACK<<"¤"<< RESET << BG_BLACK; }
+        if(one&game.Lights&~game.robot){cout<<BLACK<<"¤"<< RESET << BG_BLACK; }
+        if(one&game.robot){ cout<<RED<<"■"<< RESET << BG_BLACK; }
         if(one&game.Cell_0){ cout<<WHITE<<"0"<< RESET << BG_BLACK; }
         if(one&game.Cell_1){ cout<<WHITE<<"1"<< RESET << BG_BLACK; }
         if(one&game.Cell_2){ cout<<WHITE<<"2"<< RESET << BG_BLACK; }
@@ -37,8 +41,8 @@ void print(GameState game){
         if(one&game.Cell_4){ cout<<WHITE<<"4"<< RESET << BG_BLACK; }
         if(one&game.Cell_AnyBulb){ cout<<BLACK<<"."<< RESET << BG_BLACK; }
 
-        if((one&(game.Cell_On&~game.Lights))&~game.Cells_inBlack){ cout<<YELLOW<<"."<< RESET << BG_BLACK; }
-        if((one&~(game.Cell_On))&~game.Cells_inBlack){cout<<WHITE<<"."<< RESET << BG_BLACK; }  
+        if((one&(game.Cell_On&~game.Lights))&~game.Cells_inBlack&~game.robot){ cout<<YELLOW<<"."<< RESET << BG_BLACK; }
+        if((one&~(game.Cell_On))&~game.Cells_inBlack&~game.robot){cout<<WHITE<<"."<< RESET << BG_BLACK; }  
 
         if(one&game.Cell_On){ cout<<BG_YELLOW<<YELLOW; }
         else { cout<<BG_WHITE; }
@@ -52,13 +56,6 @@ void print(GameState game){
     }
     cout<<endl;
 }
-
-uint64_t cellsWLight(GameState game){
-
-    uint64_t cells = game.Cell_AnyBulb|game.Cell_0|game.Cell_1|game.Cell_2|game.Cell_3|game.Cell_4;
-
-    return cells;
-} 
 
 void createBoard(GameState& game){
 
@@ -86,37 +83,104 @@ void createBoard(GameState& game){
     game.Cells_inBlack = game.Cell_0|game.Cell_1|game.Cell_2|game.Cell_3|game.Cell_4|game.Cell_AnyBulb;
 
     print(game);
+}
+
+void playGame(GameState game){
+    int opcion;
+    while(1){
+        bool up = false;
+        bool down = false;
+        bool right = false;
+        bool left = false;
+        while(1)
+        {
+            cout<<"Mover hacia"<<endl;
+            if(neighbor(game, 1)){ cout<<"1.Arriba"<<endl;      up = true; }
+            if(neighbor(game, 2)){ cout<<"2.Abajo"<<endl;       down = true; }
+            if(neighbor(game, 3)){ cout<<"3.Izquierda"<<endl;   left = true; }
+            if(neighbor(game, 4)){ cout<<"4.Derecha"<<endl;     right = true; }
+            
+            cout<<"5.Colocar/Quitar Luz"<<endl;
+            cout<<"Opcion Escogida: ";
+            cin>>opcion;
+
+            if((opcion==1 && up) || (opcion==2 && down) || (opcion==3 && left) || (opcion==4 && right) || opcion==5){ break; }
+            else{ cout<<"Invalido"<<endl; }
+        }
+        moveRobot(game, opcion);
+    }
+}
+
+bool neighbor(GameState game, int move){
+
+    switch (move)
+    {
+    case 1:
+        if(((game.robot &~ firstRow) << 8 ) &~ game.Cells_inBlack){ return true; }
+        break;
+    case 2:
+        if(((game.robot &~ lastRow) >> 8 ) &~ game.Cells_inBlack){ return true; }
+        break;
+    case 3:
+        if(((game.robot &~ firstCol) << 1 ) &~ game.Cells_inBlack){ return true; }
+        break;
+    case 4:
+        if(((game.robot &~ lastCol) >> 1 ) &~ game.Cells_inBlack){ return true; }
+        break;
+    
+    default:
+        return false;
+        break;
+    }
+
+    return false;
+}
+
+void moveRobot(GameState& game, int move){
+    
+    switch (move)
+    {
+    case 1:
+        game.robot = game.robot<<8;
+        break;
+
+    case 2:
+        game.robot = game.robot>>8;
+        break;
+    
+    case 3:
+        game.robot = game.robot<<1;
+        break;
+    
+    case 4:
+        game.robot = game.robot>>1;
+        break;
+    
+    case 5:
+        putLight(game, game.robot);
+        break;
+    
+    default:
+        break;
+    }
+
+    print(game);
 
 }
 
-void putLight(GameState& game){
+void putLight(GameState& game, uint64_t newLight){
 
-    string pos;
-    int row,col;
-    while(1){
-        cout<<"Ingrese un cordenada (5d) :";
-        cin>>pos;
-        cout<<endl;
-
-        row = pos[0]-49;
-        col = pos[1]-97;
-
-        if((0 <= row && row <= 7) && (0 <= col && col <= 7) && ((firstBit>>((row*8)+col))&~game.Cells_inBlack)){ 
-
-            if((firstBit>>((row*8)+col)) &~ game.Lights){
-                game.Lights |= firstBit>>((row*8)+col);
-                illumBoard(game, true);
-            }
-            else{
-                game.Lights ^= firstBit>>((row*8)+col);
-                illumBoard(game, false);
-            }
-            
-            if(victoryCondition(game)){ break; }
-            else{ cout<< "Asegurate de colocar bien las luces."<<endl<<endl; }
-        }
-        else{ cout<<"Posicion Invalida"<<endl; }
+    if(newLight &~ game.Lights){
+        game.Lights |= newLight;
+        illumBoard(game, true);
     }
+    else{
+        game.Lights ^= newLight;
+        illumBoard(game, false);
+    }
+    
+    if(victoryCondition(game)){ cout<<"Ganaste";}
+
 }
 
 void illumBoard(GameState& game, bool turnOn){
@@ -209,7 +273,6 @@ bool victoryCondition(GameState game){
 
     if((game.Cells_inBlack | game.Cell_On) == game.Board)
     {
-        cout<<"entre"<<endl;
         for(int i=0;i<64;i++){
 
             if(one&game.Cell_0){
@@ -289,6 +352,7 @@ bool victoryCondition(GameState game){
             }
             one >>= 1;
         }
+        cout<<"Ganaste"<<endl<<endl;
         return true;
     }
 
@@ -299,7 +363,10 @@ int main(){
     GameState game;
 
     createBoard(game);
-    putLight(game);
+
+    playGame(game);
+
+    //putLight(game, 0x0);
 
     return 0;
 
