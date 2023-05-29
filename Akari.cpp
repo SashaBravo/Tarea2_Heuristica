@@ -221,34 +221,20 @@ void moveRobot(GameState& game, int move){
 }
 
 void bfs(GameState game, uint64_t startLight, uint64_t goalLight) {
-    set<uint64_t> visited;
     set<pair<uint64_t, uint64_t>> visited2;
-    set<GameState> visitedStates;
-    queue<uint64_t> q;
     queue<GameState> qGS;
 
-    q.push(startLight);
-    visited.insert(startLight);
     visited2.insert({startLight, game.robot});
     qGS.push(game);
-    visitedStates.insert(game);
-    //GameState actualState1 = game;
     
-
     while (!qGS.empty()) {
         GameState actualState1 = qGS.front();
         
         qGS.pop();
-        //print(actualState1);
-        
-
-        // uint64_t actualState = q.front();
-        // q.pop();
         // Realizar acciones con el nodo actual
         if(isLightPos(actualState1)){ 
             putLight(actualState1, actualState1.robot); 
         }
-        
         
         // Obtener las celdas adyacentes al robot
         vector<GameState> adjCellsGS = getAdjacentCellsGS(actualState1);
@@ -256,7 +242,6 @@ void bfs(GameState game, uint64_t startLight, uint64_t goalLight) {
         
         if(actualState1.Lights == goalLight)
         {
-            cout<<"termine waxin"<<endl;
             print(actualState1);
             break;
         }
@@ -268,32 +253,161 @@ void bfs(GameState game, uint64_t startLight, uint64_t goalLight) {
                 newState.robot = adjCell.robot;
 
                 // Realizar modificaciones en el nuevo estado
-
                 if(victoryCondition(newState)){ break; }
 
                 qGS.push(newState);
                 visited2.insert({newState.Lights, newState.robot});
             }
         }
-
-        // vector<uint64_t> adjCells = getAdjacentCells(actualState1);
-        // for (auto adjCell : adjCells) {
-        //     if (visited2.find({actualState,adjCell}) == visited2.end()) {
-        //         GameState newState = actualState1;
-        //         newState.robot = adjCell;
-
-        //         print(newState);
-        //         // Realizar modificaciones en el nuevo estado
-
-        //         //if(victoryCondition(newState)){ break; }
-
-        //         q.push(newState.Lights);
-        //         visited2.insert({actualState,adjCell});
-        //         //actualState1 = newState;
-        //     }
-        // }
      }
 }
+
+
+
+
+struct Point {
+    int x;
+    int y;
+
+    Point(int x, int y) : x(x), y(y) {}
+};
+
+struct CompareCost {
+    bool operator()(const pair<GameState, double>& a, const pair<GameState, double>& b) {
+        return a.second > b.second;
+    }
+};
+
+int countBits(uint64_t value) {
+    int count = 0;
+    while (value != 0) {
+        count += value & 1;
+        value >>= 1;
+    }
+    return count;
+}
+
+//double heuristic(GameState game, const Point& goal) {
+double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints) {
+    // Calcula la distancia euclidiana entre el punto de inicio y el punto de destino más cercano
+    double minDistance = std::numeric_limits<double>::max();
+
+    vector<Point> waypoints;
+    
+    while(cellsRequired)
+    {
+        auto i=64-__builtin_ffsll(cellsRequired);
+        uint64_t v = firstBit>>i;
+
+        waypoints.push_back(Point(i%8, i/8));
+
+        cellsRequired^=v;
+    }
+    
+    for (const auto waypoint : waypoints) {
+        if (!((visitedWaypoints >> (waypoint.y * 8 + waypoint.x)) & 1)) {
+            // El waypoint aún no ha sido visitado
+            int dx = start.x - waypoint.x;
+            int dy = start.y - waypoint.y;
+            double distance = std::sqrt(dx * dx + dy * dy);
+            if (distance < minDistance) {
+                minDistance = distance;
+            }
+        }
+    }
+
+    // Calcula el costo adicional basado en el número de waypoints aún no visitados
+    double unvisitedWaypointsCost = static_cast<double>(countBits(~visitedWaypoints));
+
+    // Resto de la lógica para el cálculo de la heurística
+    double heuristicValue = minDistance + unvisitedWaypointsCost;
+
+    return heuristicValue;
+}
+
+vector<GameState> generateSuccessors(GameState game) {
+    vector<GameState> successors;
+    // Implementa la generación de sucesores aquí
+    // Genera los posibles movimientos y estados sucesores a partir del estado actual
+    // Asegúrate de que los movimientos sean válidos y actualiza los atributos necesarios en cada sucesor
+    // Agrega los sucesores generados al vector de sucesores
+
+    if(((game.robot &~ firstRow) << 8 ) &~ game.Cells_inBlack){
+        //cout<<"puede arriba"<<endl;
+        auto aux = game;
+        aux.robot = aux.robot << 8 ;
+        successors.push_back(aux);
+    }
+
+    if(((game.robot &~ lastRow) >> 8 ) &~ game.Cells_inBlack){
+        //cout<<"puede abajo"<<endl;
+        auto aux = game;
+        aux.robot = aux.robot >> 8 ;
+        successors.push_back(aux);
+    }
+
+    if(((game.robot &~ firstCol) << 1 ) &~ game.Cells_inBlack){
+        //cout<<"puede izq"<<endl;
+        auto aux = game;
+        aux.robot = aux.robot << 1 ;
+        successors.push_back(aux);
+    }
+
+    if(((game.robot &~ lastCol) >> 1 ) &~ game.Cells_inBlack){
+        //cout<<"puede der"<<endl;
+        auto aux = game;
+        aux.robot = aux.robot >> 1 ;
+        successors.push_back(aux);
+    }
+
+    return successors;
+
+    return successors;
+}
+
+void aStar(GameState game, uint64_t goalLight) {
+    set<GameState> visited;
+    set<pair<uint64_t, uint64_t>> visited2;
+    priority_queue<pair<GameState, double>, vector<pair<GameState, double>>, CompareCost> open;
+
+    double initialCost = 0.0;
+    double initialF = initialCost + heuristic(Point(game.robot % 8, game.robot / 8), game.Cells_inBlack, (game.Lights&game.Cell_On));
+
+    open.push(make_pair(game, initialF));
+
+    while (!open.empty()) {
+        GameState current = open.top().first;
+        open.pop();
+        
+        if(isLightPos(current)){ 
+            putLight(current, current.robot); 
+        }
+
+        if (current.Lights == goalLight) {
+            print(current);
+            return;
+        }
+        //visited.insert(current);
+        visited2.insert({current.Lights, current.robot});
+
+        vector<GameState> successors = generateSuccessors(current);
+
+        for (auto successor : successors) {
+
+            if (visited2.find({successor.Lights, successor.robot}) == visited2.end()) {
+                double g = initialCost + 1.0; // Peso del movimiento
+
+                double f = g + heuristic(Point(successor.robot % 8, successor.robot / 8), successor.Cells_inBlack, (successor.Lights&successor.Cell_On));
+
+
+                open.push(make_pair(successor, f));
+            }
+        }
+    }
+
+    cout << "Objetivo no alcanzado" << endl;
+}
+
 
 bool isLightPos(GameState game){
     if(game.robot & game.FinalLights){ return true; }
@@ -491,15 +605,11 @@ bool victoryCondition(GameState game){
 
 int main(){
     GameState game;
-
     createBoard(game);
 
-    //playGame(game);
+    //bfs(game, game.Lights, game.FinalLights);
 
-    bfs(game, game.Lights, game.FinalLights);
-
-    //putLight(game, 0x0);
-
+    aStar(game, game.FinalLights);
     return 0;
 
 }

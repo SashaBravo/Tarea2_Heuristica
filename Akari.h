@@ -7,6 +7,8 @@
 #include <stddef.h>
 #include <limits>
 #include <cstdlib>
+#include <cmath>
+#include <chrono>
 
 using namespace std;
 
@@ -35,6 +37,16 @@ uint64_t lastRow=0x00000000000000ff;
 uint64_t borde=0xff818181818181ff;
 uint64_t firstCol=0x8080808080808080;
 uint64_t lastCol=0x0101010101010101;
+
+//Temporizadores
+chrono::duration<double> BFS_Time;
+chrono::duration<double> AStar_Time;
+chrono::duration<double> IDAStar_Time;
+
+//Nodos
+int NodosBFS = 0;
+int NodosAStar = 0;
+int NodosIDAStar = 0;
 
 //Tableros de la pagina /* krazydad.com/play/akari */
 vector<string> differentsBoards = {
