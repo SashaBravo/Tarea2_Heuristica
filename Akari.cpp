@@ -1,8 +1,5 @@
 #include "Akari.h"
 
-const int FILAS = 5;
-const int COLUMNAS = 5;
-
 using namespace std;
 
 void print(GameState game){
@@ -141,45 +138,29 @@ bool neighbor(GameState game, int move){
     return false;
 }
 
-vector<uint64_t> getAdjacentCells(GameState game) {
-
-    vector<uint64_t> adjCells;
-    
-    if(((game.robot &~ firstRow) << 8 ) &~ game.Cells_inBlack){ adjCells.push_back(game.robot << 8); }
-    if(((game.robot &~ lastRow) >> 8 ) &~ game.Cells_inBlack){ adjCells.push_back(game.robot >> 8); }
-    if(((game.robot &~ firstCol) << 1 ) &~ game.Cells_inBlack){ adjCells.push_back(game.robot << 1); }
-    if(((game.robot &~ lastCol) >> 1 ) &~ game.Cells_inBlack){ adjCells.push_back(game.robot >> 1); }
-
-    return adjCells;
-}
-
 vector<GameState> getAdjacentCellsGS(GameState game) {
 
     vector<GameState> adjCells;
     
     if(((game.robot &~ firstRow) << 8 ) &~ game.Cells_inBlack){
-        //cout<<"puede arriba"<<endl;
         auto aux = game;
         aux.robot = aux.robot << 8 ;
         adjCells.push_back(aux);
     }
 
     if(((game.robot &~ lastRow) >> 8 ) &~ game.Cells_inBlack){
-        //cout<<"puede abajo"<<endl;
         auto aux = game;
         aux.robot = aux.robot >> 8 ;
         adjCells.push_back(aux);
     }
 
     if(((game.robot &~ firstCol) << 1 ) &~ game.Cells_inBlack){
-        //cout<<"puede izq"<<endl;
         auto aux = game;
         aux.robot = aux.robot << 1 ;
         adjCells.push_back(aux);
     }
 
     if(((game.robot &~ lastCol) >> 1 ) &~ game.Cells_inBlack){
-        //cout<<"puede der"<<endl;
         auto aux = game;
         aux.robot = aux.robot >> 1 ;
         adjCells.push_back(aux);
@@ -226,7 +207,7 @@ void bfs(GameState game, uint64_t startLight, uint64_t goalLight) {
 
     visited2.insert({startLight, game.robot});
     qGS.push(game);
-    
+
     while (!qGS.empty()) {
         GameState actualState1 = qGS.front();
         
@@ -239,10 +220,10 @@ void bfs(GameState game, uint64_t startLight, uint64_t goalLight) {
         // Obtener las celdas adyacentes al robot
         vector<GameState> adjCellsGS = getAdjacentCellsGS(actualState1);
 
-        
+        NodosBFS++;
         if(actualState1.Lights == goalLight)
         {
-            print(actualState1);
+            //print(actualState1);
             break;
         }
         
@@ -262,22 +243,6 @@ void bfs(GameState game, uint64_t startLight, uint64_t goalLight) {
      }
 }
 
-
-
-
-struct Point {
-    int x;
-    int y;
-
-    Point(int x, int y) : x(x), y(y) {}
-};
-
-struct CompareCost {
-    bool operator()(const pair<GameState, double>& a, const pair<GameState, double>& b) {
-        return a.second > b.second;
-    }
-};
-
 int countBits(uint64_t value) {
     int count = 0;
     while (value != 0) {
@@ -287,8 +252,7 @@ int countBits(uint64_t value) {
     return count;
 }
 
-//double heuristic(GameState game, const Point& goal) {
-double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints) {
+double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints, uint64_t obstacles) {
     // Calcula la distancia euclidiana entre el punto de inicio y el punto de destino más cercano
     double minDistance = std::numeric_limits<double>::max();
 
@@ -304,7 +268,7 @@ double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints)
         cellsRequired^=v;
     }
     
-    for (const auto waypoint : waypoints) {
+    for (auto waypoint : waypoints) {
         if (!((visitedWaypoints >> (waypoint.y * 8 + waypoint.x)) & 1)) {
             // El waypoint aún no ha sido visitado
             int dx = start.x - waypoint.x;
@@ -325,89 +289,51 @@ double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints)
     return heuristicValue;
 }
 
-vector<GameState> generateSuccessors(GameState game) {
-    vector<GameState> successors;
-    // Implementa la generación de sucesores aquí
-    // Genera los posibles movimientos y estados sucesores a partir del estado actual
-    // Asegúrate de que los movimientos sean válidos y actualiza los atributos necesarios en cada sucesor
-    // Agrega los sucesores generados al vector de sucesores
-
-    if(((game.robot &~ firstRow) << 8 ) &~ game.Cells_inBlack){
-        //cout<<"puede arriba"<<endl;
-        auto aux = game;
-        aux.robot = aux.robot << 8 ;
-        successors.push_back(aux);
-    }
-
-    if(((game.robot &~ lastRow) >> 8 ) &~ game.Cells_inBlack){
-        //cout<<"puede abajo"<<endl;
-        auto aux = game;
-        aux.robot = aux.robot >> 8 ;
-        successors.push_back(aux);
-    }
-
-    if(((game.robot &~ firstCol) << 1 ) &~ game.Cells_inBlack){
-        //cout<<"puede izq"<<endl;
-        auto aux = game;
-        aux.robot = aux.robot << 1 ;
-        successors.push_back(aux);
-    }
-
-    if(((game.robot &~ lastCol) >> 1 ) &~ game.Cells_inBlack){
-        //cout<<"puede der"<<endl;
-        auto aux = game;
-        aux.robot = aux.robot >> 1 ;
-        successors.push_back(aux);
-    }
-
-    return successors;
-
-    return successors;
-}
-
 void aStar(GameState game, uint64_t goalLight) {
     set<GameState> visited;
     set<pair<uint64_t, uint64_t>> visited2;
     priority_queue<pair<GameState, double>, vector<pair<GameState, double>>, CompareCost> open;
 
     double initialCost = 0.0;
-    double initialF = initialCost + heuristic(Point(game.robot % 8, game.robot / 8), game.Cells_inBlack, (game.Lights&game.Cell_On));
+
+    auto r=64-__builtin_ffsll(game.robot);
+    double initialF = initialCost + heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
 
     open.push(make_pair(game, initialF));
 
     while (!open.empty()) {
-        GameState current = open.top().first;
+        GameState ActualState = open.top().first;
         open.pop();
         
-        if(isLightPos(current)){ 
-            putLight(current, current.robot); 
+        if(isLightPos(ActualState)){ 
+            putLight(ActualState, ActualState.robot); 
         }
 
-        if (current.Lights == goalLight) {
-            print(current);
+        NodosAStar++;
+        if (ActualState.Lights == goalLight) {
+            //print(ActualState);
             return;
         }
-        //visited.insert(current);
-        visited2.insert({current.Lights, current.robot});
+        
+        visited2.insert({ActualState.Lights, ActualState.robot});
 
-        vector<GameState> successors = generateSuccessors(current);
+        vector<GameState> adjCellsGS = getAdjacentCellsGS(ActualState);
 
-        for (auto successor : successors) {
+        for (auto adjCell : adjCellsGS) {
 
-            if (visited2.find({successor.Lights, successor.robot}) == visited2.end()) {
+            if (visited2.find({adjCell.Lights, adjCell.robot}) == visited2.end()) {
                 double g = initialCost + 1.0; // Peso del movimiento
+                auto r1 =64-__builtin_ffsll(adjCell.robot);
+                double f = g + heuristic(Point(r1 % 8, r1 / 8), adjCell.FinalLights, (adjCell.Lights&adjCell.Cell_On), adjCell.Cells_inBlack);
 
-                double f = g + heuristic(Point(successor.robot % 8, successor.robot / 8), successor.Cells_inBlack, (successor.Lights&successor.Cell_On));
 
-
-                open.push(make_pair(successor, f));
+                open.push(make_pair(adjCell, f));
             }
         }
     }
 
     cout << "Objetivo no alcanzado" << endl;
 }
-
 
 bool isLightPos(GameState game){
     if(game.robot & game.FinalLights){ return true; }
@@ -607,9 +533,44 @@ int main(){
     GameState game;
     createBoard(game);
 
-    //bfs(game, game.Lights, game.FinalLights);
+    cout<<"---------------------------------"<<endl;
+    cout<<"BFS..."<<endl;
+    auto startBFS = std::chrono::high_resolution_clock::now();
+
+    bfs(game, game.Lights, game.FinalLights);
+
+    auto endBFS = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationBFS = endBFS - startBFS;
+    cout<<"Tiempo (segundos): "<<durationBFS.count()<<endl;
+    cout<<"Nodos visitados: "<<NodosBFS<<endl;
+    cout<<"Camino mas corto: "<<endl;
+
+
+    cout<<"---------------------------------"<<endl;
+    cout<<"A Star..."<<endl;
+    auto startAStar = std::chrono::high_resolution_clock::now();
 
     aStar(game, game.FinalLights);
+
+    auto endAStar = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationAStar = endAStar - startAStar;
+    cout<<"Tiempo (segundos): "<<durationAStar.count()<<endl;
+    cout<<"Nodos Visitados: "<<NodosAStar<<endl;
+    cout<<"Camino mas corto: "<<endl;
+
+
+    // auto startIDAStar = std::chrono::high_resolution_clock::now();
+    // cout<<"---------------------------------"<<endl;
+    // cout<<"IDA Star..."<<endl;
+    // auto endIDAStar = std::chrono::high_resolution_clock::now();
+
+    // //Aqui va el IDAStar 
+
+    // std::chrono::duration<double> durationIDAStar = endIDAStar - startIDAStar;
+    // cout<<"Tiempo (segundos): "<<durationIDAStar.count()<<endl;
+    // cout<<"Nodos Visitados: "<<NodosIDAStar<<endl;
+    // cout<<"Camino mas corto: "<<endl;
+
     return 0;
 
 }

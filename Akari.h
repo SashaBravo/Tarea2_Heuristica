@@ -84,6 +84,19 @@ struct GameState{
     }
 };
 
+struct Point {
+    int x;
+    int y;
+
+    Point(int x, int y) : x(x), y(y) {}
+};
+
+struct CompareCost {
+    bool operator()(const pair<GameState, double>& a, const pair<GameState, double>& b) {
+        return a.second > b.second;
+    }
+};
+
 void print(GameState game);
 void createBoard(GameState& game);
 
@@ -98,5 +111,10 @@ bool victoryCondition(GameState game);
 bool isLightPos(GameState game);
 
 void bfs(GameState game, uint64_t startLight, uint64_t goalLight);
+
+void aStar(GameState game, uint64_t goalLight);
+double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints, uint64_t obstacles);
+int countBits(uint64_t value);
+
+
 vector<GameState> getAdjacentCellsGS(GameState game);
-vector<uint64_t> getAdjacentCells(GameState game);
