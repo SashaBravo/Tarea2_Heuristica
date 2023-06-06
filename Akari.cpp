@@ -353,6 +353,58 @@ void putLight(GameState& game, uint64_t newLight){
 
 }
 
+void idaStar(GameState game, uint64_t goalLight){
+
+    auto r=64-__builtin_ffsll(game.robot);
+    double limit = heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
+    double minLimit = limit;
+
+    while (true) {
+        double result = Search(initial, 0, limit, minLimit);
+        if (result == goalLight) {
+            return true;
+        } else if (result == NOT_FOUND) {
+            return false;
+        }
+        // Incrementar el límite para la próxima iteración
+        limit = result;
+    }
+}
+
+
+int Search(GameState game, double costo, double limit, double& minLimit){
+    
+    auto r=64-__builtin_ffsll(game.robot);
+    int estimatedTotalCost = costo + heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
+
+    if (estimatedTotalCost > limit) {
+        minLimit = std::min(minLimit, estimatedTotalCost);
+        return estimatedTotalCost;
+    }
+
+    if (game.Lights == game.FinalLights) {
+        cout<< "Encontrado" <<endl;
+        return;
+    }
+
+    int nextLimit = 100000;
+
+    // Generar sucesores y realizar llamadas recursivas
+    vector<GameState> adjCellsGS = getAdjacentCellsGS(game);
+
+    for (auto adj : adjCellsGS) {
+        int result = Search(adj, costo + 1, limit, minLimit);
+        if (result == FOUND_SOLUTION) {
+            return FOUND_SOLUTION;
+        } else if (result < nextLimit) {
+            nextLimit = result;
+        }
+    }
+
+    return nextLimit;
+
+}
+
 void illumBoard(GameState& game, bool turnOn){
     
     if(turnOn){
