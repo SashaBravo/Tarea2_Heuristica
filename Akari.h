@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <chrono>
+#include <unordered_set>
 
 using namespace std;
 
@@ -116,7 +117,7 @@ void aStar(GameState game, uint64_t goalLight);
 double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints, uint64_t obstacles);
 int countBits(uint64_t value);
 
-void idaStar(GameState game, uint64_t goalLight);
-int Search(GameState game, double costo, double limit, double& minLimit);
+void idaStar(GameState game);
+int Search(unordered_set<GameState>& path, int costo, int limit);
 
 vector<GameState> getAdjacentCellsGS(GameState game);

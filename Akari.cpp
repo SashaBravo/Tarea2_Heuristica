@@ -325,8 +325,6 @@ void aStar(GameState game, uint64_t goalLight) {
                 double g = initialCost + 1.0; // Peso del movimiento
                 auto r1 =64-__builtin_ffsll(adjCell.robot);
                 double f = g + heuristic(Point(r1 % 8, r1 / 8), adjCell.FinalLights, (adjCell.Lights&adjCell.Cell_On), adjCell.Cells_inBlack);
-
-
                 open.push(make_pair(adjCell, f));
             }
         }
@@ -353,54 +351,66 @@ void putLight(GameState& game, uint64_t newLight){
 
 }
 
-void idaStar(GameState game, uint64_t goalLight){
+void idaStar(GameState game){
 
+    unordered_set<GameState> path;
     auto r=64-__builtin_ffsll(game.robot);
-    double limit = heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
-    double minLimit = limit;
-
+    int limit = heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
+    
+    path.insert(game);
+    
     while (true) {
-        double result = Search(initial, 0, limit, minLimit);
-        if (result == goalLight) {
-            return true;
-        } else if (result == NOT_FOUND) {
-            return false;
-        }
+        int result = Search(path, 0, limit);
+        if (result == std::numeric_limits<int>::max()) {
+            cout << "No encontro solución" << endl;
+            break;
+        } 
+        // cout << limit << " + " << result <<endl;
         // Incrementar el límite para la próxima iteración
         limit = result;
     }
 }
 
 
-int Search(GameState game, double costo, double limit, double& minLimit){
+int Search(unordered_set<GameState>& path, int costo, int limit){
+    //auto lastElementIterator = prev(path.end());
+    GameState node = *(path.begin());
+    //print(node);
     
-    auto r=64-__builtin_ffsll(game.robot);
-    int estimatedTotalCost = costo + heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
-
+    auto r=64-__builtin_ffsll(node.robot);
+    int estimatedTotalCost = costo + heuristic(Point(r % 8, r / 8), node.FinalLights, (node.Lights&node.Cell_On), node.Cells_inBlack);
+    
     if (estimatedTotalCost > limit) {
-        minLimit = std::min(minLimit, estimatedTotalCost);
         return estimatedTotalCost;
     }
 
-    if (game.Lights == game.FinalLights) {
+    if(isLightPos(node)){putLight(node, node.robot);}
+
+    if (node.Lights == node.FinalLights) {
         cout<< "Encontrado" <<endl;
-        return;
+        return 0;
     }
 
-    int nextLimit = 100000;
-
+    int nextLimit = std::numeric_limits<int>::max();
+    
     // Generar sucesores y realizar llamadas recursivas
-    vector<GameState> adjCellsGS = getAdjacentCellsGS(game);
-
-    for (auto adj : adjCellsGS) {
-        int result = Search(adj, costo + 1, limit, minLimit);
-        if (result == FOUND_SOLUTION) {
-            return FOUND_SOLUTION;
-        } else if (result < nextLimit) {
-            nextLimit = result;
+    vector<GameState> adjCellsGS = getAdjacentCellsGS(node);
+    
+    for( auto adj : adjCellsGS)
+    {   
+        //cout << "n" <<endl;
+        
+        if(path.find(adj) != path.end())
+        {  
+            print(adj);
+            path.insert(adj);
+            int result = Search(path, costo + 1, limit);
+            if(result < nextLimit){nextLimit = result;}
+            auto lastElementIterator = path.end();
+            path.erase(*lastElementIterator);
+            cout << "n" <<endl;
         }
     }
-
     return nextLimit;
 
 }
@@ -585,43 +595,43 @@ int main(){
     GameState game;
     createBoard(game);
 
-    cout<<"---------------------------------"<<endl;
-    cout<<"BFS..."<<endl;
-    auto startBFS = std::chrono::high_resolution_clock::now();
-
-    bfs(game, game.Lights, game.FinalLights);
-
-    auto endBFS = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> durationBFS = endBFS - startBFS;
-    cout<<"Tiempo (segundos): "<<durationBFS.count()<<endl;
-    cout<<"Nodos visitados: "<<NodosBFS<<endl;
-    cout<<"Camino mas corto: "<<endl;
-
-
-    cout<<"---------------------------------"<<endl;
-    cout<<"A Star..."<<endl;
-    auto startAStar = std::chrono::high_resolution_clock::now();
-
-    aStar(game, game.FinalLights);
-
-    auto endAStar = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> durationAStar = endAStar - startAStar;
-    cout<<"Tiempo (segundos): "<<durationAStar.count()<<endl;
-    cout<<"Nodos Visitados: "<<NodosAStar<<endl;
-    cout<<"Camino mas corto: "<<endl;
-
-
-    // auto startIDAStar = std::chrono::high_resolution_clock::now();
     // cout<<"---------------------------------"<<endl;
-    // cout<<"IDA Star..."<<endl;
-    // auto endIDAStar = std::chrono::high_resolution_clock::now();
+    // cout<<"BFS..."<<endl;
+    // auto startBFS = std::chrono::high_resolution_clock::now();
 
-    // //Aqui va el IDAStar 
+    // bfs(game, game.Lights, game.FinalLights);
 
-    // std::chrono::duration<double> durationIDAStar = endIDAStar - startIDAStar;
-    // cout<<"Tiempo (segundos): "<<durationIDAStar.count()<<endl;
-    // cout<<"Nodos Visitados: "<<NodosIDAStar<<endl;
+    // auto endBFS = std::chrono::high_resolution_clock::now();
+    // std::chrono::duration<double> durationBFS = endBFS - startBFS;
+    // cout<<"Tiempo (segundos): "<<durationBFS.count()<<endl;
+    // cout<<"Nodos visitados: "<<NodosBFS<<endl;
     // cout<<"Camino mas corto: "<<endl;
+
+
+    // cout<<"---------------------------------"<<endl;
+    // cout<<"A Star..."<<endl;
+    // auto startAStar = std::chrono::high_resolution_clock::now();
+
+    // aStar(game, game.FinalLights);
+
+    // auto endAStar = std::chrono::high_resolution_clock::now();
+    // std::chrono::duration<double> durationAStar = endAStar - startAStar;
+    // cout<<"Tiempo (segundos): "<<durationAStar.count()<<endl;
+    // cout<<"Nodos Visitados: "<<NodosAStar<<endl;
+    // cout<<"Camino mas corto: "<<endl;
+
+
+    auto startIDAStar = std::chrono::high_resolution_clock::now();
+    cout<<"---------------------------------"<<endl;
+    cout<<"IDA Star..."<<endl;
+    auto endIDAStar = std::chrono::high_resolution_clock::now();
+
+    idaStar(game);
+
+    std::chrono::duration<double> durationIDAStar = endIDAStar - startIDAStar;
+    cout<<"Tiempo (segundos): "<<durationIDAStar.count()<<endl;
+    cout<<"Nodos Visitados: "<<NodosIDAStar<<endl;
+    cout<<"Camino mas corto: "<<endl;
 
     return 0;
 
