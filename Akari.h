@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <queue>
+#include <deque>
 #include <set>
 #include <chrono>
 #include <ctime>
@@ -26,6 +27,8 @@ using namespace std;
 #define BG_MAGENTA "\033[45m"
 #define BG_CYAN "\033[46m"
 #define BG_WHITE "\033[47m"
+
+#define Find 1000.0
 
 //tablero de 7x7, 64 bits
 uint64_t empty=0x0;
@@ -83,6 +86,23 @@ struct GameState{
     bool operator<(const GameState& other) const {
         return Board < other.Board;
     }
+
+    bool operator==(const GameState& other) const {
+        // Comparar los atributos relevantes para determinar la igualdad
+        // Devolver true si son iguales, false en caso contrario
+        return (Board == other.Board &&
+                Lights == other.Lights &&
+                FinalLights == other.FinalLights &&
+                Cell_On == other.Cell_On &&
+                Cells_inBlack == other.Cells_inBlack &&
+                Cell_AnyBulb == other.Cell_AnyBulb &&
+                Cell_0 == other.Cell_0 &&
+                Cell_1 == other.Cell_1 &&
+                Cell_2 == other.Cell_2 &&
+                Cell_3 == other.Cell_3 &&
+                Cell_4 == other.Cell_4 &&
+                robot == other.robot);
+    }
 };
 
 struct Point {
@@ -118,6 +138,6 @@ double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints,
 int countBits(uint64_t value);
 
 void idaStar(GameState game);
-int Search(unordered_set<GameState>& path, int costo, int limit);
+int Search(deque<GameState>& path, double costo, double limit);
 
 vector<GameState> getAdjacentCellsGS(GameState game);

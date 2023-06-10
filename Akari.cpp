@@ -303,6 +303,7 @@ void aStar(GameState game, uint64_t goalLight) {
 
     while (!open.empty()) {
         GameState ActualState = open.top().first;
+        
         open.pop();
         
         if(isLightPos(ActualState)){ 
@@ -353,14 +354,16 @@ void putLight(GameState& game, uint64_t newLight){
 
 void idaStar(GameState game){
 
-    unordered_set<GameState> path;
+    deque<GameState> path;
     auto r=64-__builtin_ffsll(game.robot);
-    int limit = heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
-    
-    path.insert(game);
+    double limit = heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
+
+    path.push_back(game);
     
     while (true) {
-        int result = Search(path, 0, limit);
+        double result = Search(path, 0, limit);
+
+        if(result == Find) {cout << "Encontrado"<< endl; break;}
         if (result == std::numeric_limits<int>::max()) {
             cout << "No encontro solución" << endl;
             break;
@@ -372,14 +375,14 @@ void idaStar(GameState game){
 }
 
 
-int Search(unordered_set<GameState>& path, int costo, int limit){
+int Search(deque<GameState>& path, double costo, double limit){
     //auto lastElementIterator = prev(path.end());
-    GameState node = *(path.begin());
+    GameState node = path.back();
     //print(node);
     
     auto r=64-__builtin_ffsll(node.robot);
-    int estimatedTotalCost = costo + heuristic(Point(r % 8, r / 8), node.FinalLights, (node.Lights&node.Cell_On), node.Cells_inBlack);
-    
+    double estimatedTotalCost = costo + heuristic(Point(r % 8, r / 8), node.FinalLights, (node.Lights&node.Cell_On), node.Cells_inBlack);
+    cout << costo << endl;
     if (estimatedTotalCost > limit) {
         return estimatedTotalCost;
     }
@@ -388,27 +391,32 @@ int Search(unordered_set<GameState>& path, int costo, int limit){
 
     if (node.Lights == node.FinalLights) {
         cout<< "Encontrado" <<endl;
-        return 0;
+        
+        return Find;
     }
 
-    int nextLimit = std::numeric_limits<int>::max();
-    
+    double nextLimit = std::numeric_limits<int>::max();
+
     // Generar sucesores y realizar llamadas recursivas
     vector<GameState> adjCellsGS = getAdjacentCellsGS(node);
     
     for( auto adj : adjCellsGS)
     {   
-        //cout << "n" <<endl;
-        
-        if(path.find(adj) != path.end())
+        bool notIn = false;
+        for(auto pathnode : path)
+        {    
+            if(adj == pathnode){notIn = true; /*cout << "1" <<endl;*/}
+        }
+
+        if(notIn == false)
         {  
-            print(adj);
-            path.insert(adj);
-            int result = Search(path, costo + 1, limit);
+            //print(adj);
+            path.push_back(adj);
+            double result = Search(path, costo + 1, limit);
+            cout << result << endl;
+            if (result == Find){return Find;}
             if(result < nextLimit){nextLimit = result;}
-            auto lastElementIterator = path.end();
-            path.erase(*lastElementIterator);
-            cout << "n" <<endl;
+            path.pop_back();
         }
     }
     return nextLimit;
@@ -619,7 +627,6 @@ int main(){
     // cout<<"Tiempo (segundos): "<<durationAStar.count()<<endl;
     // cout<<"Nodos Visitados: "<<NodosAStar<<endl;
     // cout<<"Camino mas corto: "<<endl;
-
 
     auto startIDAStar = std::chrono::high_resolution_clock::now();
     cout<<"---------------------------------"<<endl;
