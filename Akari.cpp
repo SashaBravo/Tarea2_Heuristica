@@ -195,22 +195,6 @@ void moveRobot(GameState& game, int move){
 
 }
 
-void aaaaa(uint64_t board){
-    uint64_t one=0x8000000000000000;
-    for(int i=0;i<49;i++){
-        if(one&board){
-            std::cout<<"o";
-        }else{
-            std::cout<<"-";
-        }
-        if(i%7==6){
-            std::cout<<std::endl;
-        }
-        one >>= 1;
-    }
-    std::cout<<std::endl ;
-}
-
 void bfs(GameState initialState) {
     queue<GameState> q; // Cola para almacenar los estados a visitar
     unordered_set<GameState, HashFunction> visited; // Conjunto para almacenar los estados visitados
