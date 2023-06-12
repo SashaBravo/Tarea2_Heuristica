@@ -1,6 +1,6 @@
 # Variables de compilación
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall -Wextra
+CXXFLAGS = -std=c++20 -Wall -Wextra
 
 # Objetivos principales
 all: Akari

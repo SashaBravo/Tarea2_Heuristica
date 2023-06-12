@@ -11,6 +11,9 @@
 #include <cmath>
 #include <chrono>
 #include <unordered_set>
+#include <unordered_map>
+#include <algorithm>
+#include <map>
 
 using namespace std;
 
@@ -28,7 +31,7 @@ using namespace std;
 #define BG_CYAN "\033[46m"
 #define BG_WHITE "\033[47m"
 
-#define Find 1000.0
+#define win 10000
 
 //tablero de 7x7, 64 bits
 uint64_t empty=0x0;
@@ -51,6 +54,7 @@ chrono::duration<double> IDAStar_Time;
 int NodosBFS = 0;
 int NodosAStar = 0;
 int NodosIDAStar = 0;
+int AStar_path = 0;
 
 //Tableros de la pagina /* krazydad.com/play/akari */
 vector<string> differentsBoards = {
@@ -59,21 +63,14 @@ vector<string> differentsBoards = {
     "Lxxx1xxL....L....L.0x.L.x1..L.1xL2L...1L...L.........L...L1xx2L.", //  Tablero 3   2-50-16
     "1Lx1x.Lx...L....L..x....x..xL.1LL2L.2L.x...Lx..L....L...1L.x1xL1", //  Tablero 4   2-50-17
     "L.....xL1xx.L.0...L.xL1..L3L........L3L.L2Lx.L...x.L.xx1.x.....L", //  Tablero 5   2-53-17
-    ".Lx.Lx.LL.xL2.L.2....L3xLx....L..L....xLx3L....x.L.xL1.LL.1L.xL.", //  Tablero 6   1-53-17
-    "..LxLx2LxL2...L.x..L..x.L..1xL.x2.L11..LLx..L..x.L...xL2.1xLx..L", //  Tablero 7   2-67-15
-    "LxxxL..x...L3L..0.L..1.L.L.xL...L.xL2.L.1.L.xL3.....L4L.L.0..L.."  //  Tablero 8   2-67-16
     };
 
-struct GameState{
+struct GameState {
     uint64_t Board = full;
-
     uint64_t Lights = 0x0;
     uint64_t FinalLights = 0x0;
-
     uint64_t Cell_On = 0x0;
-
     uint64_t Cells_inBlack = 0x0;
-    
     uint64_t Cell_AnyBulb = 0x0;
     uint64_t Cell_0 = 0x0;
     uint64_t Cell_1 = 0x0;
@@ -81,15 +78,18 @@ struct GameState{
     uint64_t Cell_3 = 0x0;
     uint64_t Cell_4 = 0x0;
 
-    uint64_t robot = 0x0000000400000000; //la casilla 30 es blanca para todos los tableros
+    uint64_t robot = 0x0000000400000000;
+
+    GameState* parent = nullptr;
+    double g;
+    double h;
+    double f;
 
     bool operator<(const GameState& other) const {
         return Board < other.Board;
     }
 
     bool operator==(const GameState& other) const {
-        // Comparar los atributos relevantes para determinar la igualdad
-        // Devolver true si son iguales, false en caso contrario
         return (Board == other.Board &&
                 Lights == other.Lights &&
                 FinalLights == other.FinalLights &&
@@ -101,7 +101,41 @@ struct GameState{
                 Cell_2 == other.Cell_2 &&
                 Cell_3 == other.Cell_3 &&
                 Cell_4 == other.Cell_4 &&
-                robot == other.robot);
+                robot == other.robot &&
+                //parent == other.parent &&
+                g == other.g &&
+                h == other.h &&
+                f == other.f);
+    }
+
+    bool operator!=(const GameState& other) const {
+        return !(*this == other);
+    }
+};
+
+struct HashFunction {
+    std::size_t operator()(const GameState& state) const {
+        std::size_t hash = 0;
+        hash_combine(hash, std::hash<uint64_t>{}(state.Board));
+        hash_combine(hash, std::hash<uint64_t>{}(state.Lights));
+        hash_combine(hash, std::hash<uint64_t>{}(state.FinalLights));
+        hash_combine(hash, std::hash<uint64_t>{}(state.Cell_On));
+        hash_combine(hash, std::hash<uint64_t>{}(state.Cells_inBlack));
+        hash_combine(hash, std::hash<uint64_t>{}(state.Cell_AnyBulb));
+        hash_combine(hash, std::hash<uint64_t>{}(state.Cell_0));
+        hash_combine(hash, std::hash<uint64_t>{}(state.Cell_1));
+        hash_combine(hash, std::hash<uint64_t>{}(state.Cell_2));
+        hash_combine(hash, std::hash<uint64_t>{}(state.Cell_3));
+        hash_combine(hash, std::hash<uint64_t>{}(state.Cell_4));
+        hash_combine(hash, std::hash<uint64_t>{}(state.robot));
+        return hash;
+    }
+
+    private:
+    // Función auxiliar para combinar hashes
+    template <typename T>
+    void hash_combine(std::size_t& seed, const T& value) const {
+        seed ^= std::hash<T>{}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 };
 
@@ -118,26 +152,25 @@ struct CompareCost {
     }
 };
 
-void print(GameState game);
-void createBoard(GameState& game);
+void print(GameState& game);
+void createBoard(GameState& game, int N_tablero);
 
 void putLight(GameState& game, uint64_t newLight);
 void illumBoard(GameState& game, bool turnOn);
 
-void playGame(GameState game);
+void playGame(GameState& game);
 void moveRobot(GameState& game, int move);
-bool neighbor(GameState game, int move);
+bool neighbor(GameState& game, int move);
 
-bool victoryCondition(GameState game);
-bool isLightPos(GameState game);
+bool victoryCondition(GameState& game);
+bool isLightPos(GameState& game);
 
-void bfs(GameState game, uint64_t startLight, uint64_t goalLight);
+void bfs(GameState initialState);
 
-void aStar(GameState game, uint64_t goalLight);
+void aStar(GameState& game);
 double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints, uint64_t obstacles);
 int countBits(uint64_t value);
 
-void idaStar(GameState game);
-int Search(deque<GameState>& path, double costo, double limit);
-
-vector<GameState> getAdjacentCellsGS(GameState game);
+bool idaStar(GameState& start, uint64_t goalLight);
+double search(GameState state, uint64_t goalLight, double g, double bound, std::vector<GameState>& path);
+vector<GameState> getAdjacentCellsGS(GameState& game);

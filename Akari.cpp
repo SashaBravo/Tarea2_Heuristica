@@ -2,7 +2,7 @@
 
 using namespace std;
 
-void print(GameState game){
+void print(GameState& game){
 
     //system("clear");
 
@@ -54,17 +54,11 @@ void print(GameState game){
     cout<<endl;
 }
 
-void createBoard(GameState& game){
+void createBoard(GameState& game, int N_tablero){
 
-    cout<<"Tablero Inicial"<<endl;
+    cout<<"Tablero Inicial - " << N_tablero +1 << "\n" <<endl;
 
-    srand((unsigned) time(NULL));
-
-    int auxRand = differentsBoards.size();
-
-    int aux = rand() % auxRand;
-
-    string auxiliar = differentsBoards[aux];
+    string auxiliar = differentsBoards[N_tablero];
     
     int a = auxiliar.length();
     for(int i = 0; i < a; i++)
@@ -83,7 +77,7 @@ void createBoard(GameState& game){
     print(game);
 }
 
-void playGame(GameState game){
+void playGame(GameState& game){
     int opcion;
     while(1){
         
@@ -113,7 +107,7 @@ void playGame(GameState game){
     }
 }
 
-bool neighbor(GameState game, int move){
+bool neighbor(GameState& game, int move){
 
     switch (move)
     {
@@ -138,7 +132,7 @@ bool neighbor(GameState game, int move){
     return false;
 }
 
-vector<GameState> getAdjacentCellsGS(GameState game) {
+vector<GameState> getAdjacentCellsGS(GameState& game) {
 
     vector<GameState> adjCells;
     
@@ -201,46 +195,81 @@ void moveRobot(GameState& game, int move){
 
 }
 
-void bfs(GameState game, uint64_t startLight, uint64_t goalLight) {
-    set<pair<uint64_t, uint64_t>> visited2;
-    queue<GameState> qGS;
-
-    visited2.insert({startLight, game.robot});
-    qGS.push(game);
-
-    while (!qGS.empty()) {
-        GameState actualState1 = qGS.front();
-        
-        qGS.pop();
-        // Realizar acciones con el nodo actual
-        if(isLightPos(actualState1)){ 
-            putLight(actualState1, actualState1.robot); 
+void aaaaa(uint64_t board){
+    uint64_t one=0x8000000000000000;
+    for(int i=0;i<49;i++){
+        if(one&board){
+            std::cout<<"o";
+        }else{
+            std::cout<<"-";
         }
+        if(i%7==6){
+            std::cout<<std::endl;
+        }
+        one >>= 1;
+    }
+    std::cout<<std::endl ;
+}
+
+void bfs(GameState initialState) {
+    queue<GameState> q; // Cola para almacenar los estados a visitar
+    unordered_set<GameState, HashFunction> visited; // Conjunto para almacenar los estados visitados
+    unordered_map<GameState, GameState, HashFunction> parentMap; // Mapa para almacenar el estado padre de cada estado visitado
+
+    // Agregar el estado inicial a la cola y marcarlo como visitado
+    q.push(initialState);
+    visited.insert(initialState);
+    //initialState.parent = nullptr;
+    while (!q.empty()) {
+        GameState currentState = q.front();
         
-        // Obtener las celdas adyacentes al robot
-        vector<GameState> adjCellsGS = getAdjacentCellsGS(actualState1);
+        q.pop();
 
         NodosBFS++;
-        if(actualState1.Lights == goalLight)
-        {
-            //print(actualState1);
-            break;
+        //cout << NodosBFS << " - ";
+
+        if(isLightPos(currentState)){ 
+            putLight(currentState, currentState.robot); 
         }
         
-        for (auto adjCell : adjCellsGS) {
+        // Verificar si se alcanzó el estado objetivo
+        if (currentState.Lights == currentState.FinalLights) {
+            vector<GameState> path;
+            // while (d > 0) 
+            // {
+            //     cout << "dd";
+            //     path.push_back(currentState);
+                
+            //     currentState = *(currentState.parent); // no asigna el valor, no encontramos el porque
+            //     print (currentState);
+            //     d--;
+            // }
 
-            if (visited2.find({adjCell.Lights, adjCell.robot}) == visited2.end()) {
-                GameState newState = actualState1;
-                newState.robot = adjCell.robot;
+            // cout << path.size() << endl;
+            // for (int i = path.size() - 1; i >= 0; i--) 
+            // {                     
+            //     print(path[i]);
+            // } 
+            return;
+        }
 
-                // Realizar modificaciones en el nuevo estado
-                if(victoryCondition(newState)){ break; }
+        // Generar los sucesores del estado actual
+        vector<GameState> successors = getAdjacentCellsGS(currentState);
 
-                qGS.push(newState);
-                visited2.insert({newState.Lights, newState.robot});
+        // Recorrer los sucesores
+        for (auto successor : successors) {
+            if (visited.find(successor) == visited.end()) {
+                
+                q.push(successor);
+                visited.insert(successor);
+                //parentMap[successor] = currentState;
+                successor.parent = new GameState(currentState);
             }
         }
-     }
+    }
+
+    // No se encontró un camino hasta el estado objetivo
+    return;
 }
 
 int countBits(uint64_t value) {
@@ -277,6 +306,11 @@ double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints,
             if (distance < minDistance) {
                 minDistance = distance;
             }
+
+            // Restar puntos basados en obstáculos
+            if ((obstacles >> (waypoint.y * 8 + waypoint.x)) & 1) {
+                distance -= 1.0; // Restar 1 punto por cada obstáculo
+            }
         }
     }
 
@@ -289,52 +323,62 @@ double heuristic(Point start, uint64_t cellsRequired, uint64_t visitedWaypoints,
     return heuristicValue;
 }
 
-void aStar(GameState game, uint64_t goalLight) {
-    set<GameState> visited;
-    set<pair<uint64_t, uint64_t>> visited2;
-    priority_queue<pair<GameState, double>, vector<pair<GameState, double>>, CompareCost> open;
+void aStar(GameState& start) {
+    std::map<GameState, GameState> parents;
+    std::priority_queue<std::pair<GameState, double>, std::vector<std::pair<GameState, double>>, CompareCost> open;
+    
+    std::set<GameState, decltype([](const GameState& a, const GameState& b) {
+        return std::tie(a.Lights, a.robot, a.Cell_On) < std::tie(b.Lights, b.robot, b.Cell_On);
+    })> closed;
 
     double initialCost = 0.0;
+    auto r = 64 - __builtin_ffsll(start.robot); 
+    double initialF = initialCost + heuristic(Point(r % 8, r / 8), start.FinalLights, (start.Lights&start.Cell_On), start.Cells_inBlack);
 
-    auto r=64-__builtin_ffsll(game.robot);
-    double initialF = initialCost + heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
-
-    open.push(make_pair(game, initialF));
-
+    open.push(std::make_pair(start, initialF));
+    
     while (!open.empty()) {
-        GameState ActualState = open.top().first;
-        
+        GameState currentState = open.top().first;
         open.pop();
         
-        if(isLightPos(ActualState)){ 
-            putLight(ActualState, ActualState.robot); 
+
+        if (isLightPos(currentState)) {
+            putLight(currentState, currentState.robot);
         }
 
-        NodosAStar++;
-        if (ActualState.Lights == goalLight) {
-            //print(ActualState);
+        if (currentState.Lights == currentState.FinalLights) {
+            //constructPath(parents, currentState);
+            AStar_path = closed.size();
+            //print(currentState);
             return;
         }
-        
-        visited2.insert({ActualState.Lights, ActualState.robot});
 
-        vector<GameState> adjCellsGS = getAdjacentCellsGS(ActualState);
+        closed.insert(currentState);
+        NodosAStar++;
+        std::vector<GameState> adjCells = getAdjacentCellsGS(currentState);
 
-        for (auto adjCell : adjCellsGS) {
+        for (auto adjCell : adjCells) {
+            double g = initialCost + 1.0; // Peso del movimiento
+            double f = g + heuristic(Point(r % 8, r / 8), adjCell.FinalLights, (adjCell.Lights&adjCell.Cell_On), adjCell.Cells_inBlack);;
 
-            if (visited2.find({adjCell.Lights, adjCell.robot}) == visited2.end()) {
-                double g = initialCost + 1.0; // Peso del movimiento
-                auto r1 =64-__builtin_ffsll(adjCell.robot);
-                double f = g + heuristic(Point(r1 % 8, r1 / 8), adjCell.FinalLights, (adjCell.Lights&adjCell.Cell_On), adjCell.Cells_inBlack);
-                open.push(make_pair(adjCell, f));
+
+            if (closed.find(adjCell) == closed.end()) {
+
+                if (parents.find(adjCell) == parents.end() || g < parents[adjCell].g) {
+                    parents[adjCell] = currentState;
+                    //open.push(std::make_pair(adjCell, f));
+                    
+                }
+                open.push(std::make_pair(adjCell, f));
             }
         }
     }
 
-    cout << "Objetivo no alcanzado" << endl;
+    std::cout << "Objetivo no alcanzado" << std::endl;
 }
 
-bool isLightPos(GameState game){
+
+bool isLightPos(GameState& game){
     if(game.robot & game.FinalLights){ return true; }
     return false;
 }
@@ -352,75 +396,86 @@ void putLight(GameState& game, uint64_t newLight){
 
 }
 
-void idaStar(GameState game){
 
-    deque<GameState> path;
-    auto r=64-__builtin_ffsll(game.robot);
-    double limit = heuristic(Point(r % 8, r / 8), game.FinalLights, (game.Lights&game.Cell_On), game.Cells_inBlack);
+bool idaStar(GameState& start, uint64_t goalLight) {
+    auto r = 64 - __builtin_ffsll(start.robot); 
+    double bound = heuristic(Point(r % 8, r / 8), start.FinalLights, (start.Lights&start.Cell_On), start.Cells_inBlack);
 
-    path.push_back(game);
-    
+    std::vector<GameState> path;
+    path.push_back(start);
+
     while (true) {
-        double result = Search(path, 0, limit);
+        double result = search(start, goalLight, 0.0, bound, path);
 
-        if(result == Find) {cout << "Encontrado"<< endl; break;}
-        if (result == std::numeric_limits<int>::max()) {
-            cout << "No encontro solución" << endl;
-            break;
-        } 
-        // cout << limit << " + " << result <<endl;
-        // Incrementar el límite para la próxima iteración
-        limit = result;
+
+        if (result == -1.0) {
+
+            // Solución encontrada
+            return true;
+        }
+
+        if (result == numeric_limits<double>::infinity()) {
+            // No se encontró la solución
+            return false;
+        }
+
+        // Aumenta el límite para la siguiente iteración
+        bound = result;
     }
 }
 
+double search(GameState state, uint64_t goalLight, double g, double bound, vector<GameState>& path) {
+    auto r = 64 - __builtin_ffsll(state.robot);
+    double f = g + heuristic(Point(r % 8, r / 8), state.FinalLights, (state.Lights & state.Cell_On), state.Cells_inBlack);
 
-int Search(deque<GameState>& path, double costo, double limit){
-    //auto lastElementIterator = prev(path.end());
-    GameState node = path.back();
-    //print(node);
-    
-    auto r=64-__builtin_ffsll(node.robot);
-    double estimatedTotalCost = costo + heuristic(Point(r % 8, r / 8), node.FinalLights, (node.Lights&node.Cell_On), node.Cells_inBlack);
-    cout << costo << endl;
-    if (estimatedTotalCost > limit) {
-        return estimatedTotalCost;
+    if (f > bound) {
+        return f; // Supera el límite, se realiza un corte
     }
 
-    if(isLightPos(node)){putLight(node, node.robot);}
-
-    if (node.Lights == node.FinalLights) {
-        cout<< "Encontrado" <<endl;
-        
-        return Find;
+    if (isLightPos(state)) {
+        putLight(state, state.robot);
     }
 
-    double nextLimit = std::numeric_limits<int>::max();
+    if (state.Lights == state.FinalLights) {
+        return -1.0; // Se encontró la solución
+    }
 
-    // Generar sucesores y realizar llamadas recursivas
-    vector<GameState> adjCellsGS = getAdjacentCellsGS(node);
-    
-    for( auto adj : adjCellsGS)
-    {   
-        bool notIn = false;
-        for(auto pathnode : path)
-        {    
-            if(adj == pathnode){notIn = true; /*cout << "1" <<endl;*/}
+    double min = std::numeric_limits<double>::infinity();
+    vector<GameState> adjCells = getAdjacentCellsGS(state); // Genera los sucesores
+
+    for (auto adjCell : adjCells) {
+        bool isDuplicate = false;
+        for (auto visitedState : path) {
+            if (visitedState.robot == adjCell.robot &&
+                visitedState.Lights == adjCell.Lights &&
+                visitedState.Cell_On == adjCell.Cell_On) {
+                cout << "igual" << endl;
+                isDuplicate = true;
+                break;
+            }
         }
 
-        if(notIn == false)
-        {  
-            //print(adj);
-            path.push_back(adj);
-            double result = Search(path, costo + 1, limit);
-            cout << result << endl;
-            if (result == Find){return Find;}
-            if(result < nextLimit){nextLimit = result;}
+        if (!isDuplicate) {
+            path.push_back(adjCell);
+            double result = search(adjCell, goalLight, g + 1.0, bound, path);
+
+            if (result == -1.0) {
+                return -1.0; // Se encontró la solución en el sucesor
+            }
+
+            if (result != numeric_limits<double>::infinity() && result < min) {
+                min = result; // Actualiza el nuevo mínimo
+            }
+
             path.pop_back();
         }
     }
-    return nextLimit;
 
+    if (min == numeric_limits<double>::infinity()) {
+        return numeric_limits<double>::infinity(); // No se encontró la solución
+    }
+
+    return min; // Retorna el nuevo mínimo
 }
 
 void illumBoard(GameState& game, bool turnOn){
@@ -508,7 +563,7 @@ void illumBoard(GameState& game, bool turnOn){
     //print(game);
 }
 
-bool victoryCondition(GameState game){
+bool victoryCondition(GameState& game){
     auto one = firstBit;
 
     if((game.Cells_inBlack | game.Cell_On) == game.Board)
@@ -600,45 +655,93 @@ bool victoryCondition(GameState game){
 }
 
 int main(){
-    GameState game;
-    createBoard(game);
 
+    int option;
+
+    cout << "Juego manual opción 1  //  Juego automatico opción 2: ";
+    cin >> option;
+
+    while (option != 1 && option != 2)
+    {
+        cout << "Ingrese un argumento valido: ";
+        cin >> option;
+    }
+    
+
+
+    switch (option)
+    {
+    case 1:
+    {
+        srand((unsigned) time(NULL));
+        int auxRand = differentsBoards.size();
+        int aux = rand() % auxRand;
+    
+        GameState game;
+        createBoard(game, aux);
+        playGame(game);
+        break;
+    }
+    case 2:
+    {
+        int N_tablero = 0;
+    
+        for( auto Tablero : differentsBoards)
+        {
+            cout <<"\n"<< endl;
+            GameState game;
+            createBoard(game, N_tablero );
+
+            cout<<"---------------------------------"<<endl;
+            cout<<"BFS..."<<endl;
+            auto startBFS = std::chrono::high_resolution_clock::now();
+
+            bfs(game);
+
+            auto endBFS = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> durationBFS = endBFS - startBFS;
+            cout<<"Tiempo (segundos): "<<durationBFS.count()<<endl;
+            cout<<"Nodos visitados: "<<NodosBFS<<endl;
+            cout<<"Camino mas corto: "<<endl;
+
+
+            cout<<"---------------------------------"<<endl;
+            cout<<"A Star..."<<endl;
+            auto startAStar = std::chrono::high_resolution_clock::now();
+
+            aStar(game);
+
+            auto endAStar = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> durationAStar = endAStar - startAStar;
+            cout<<"Tiempo (segundos): "<<durationAStar.count()<<endl;
+            cout<<"Nodos Visitados: "<<NodosAStar<<endl;
+            cout<<"Camino mas corto: " << AStar_path <<endl;
+
+            NodosBFS = 0;
+            NodosAStar = 0;
+
+            N_tablero++;
+
+        cout <<"\n"<< endl;
+        }
+        break;
+    }
+    default:
+        cout << "error" << endl;
+        break;
+    }
+    
+    // auto startIDAStar = std::chrono::high_resolution_clock::now();
     // cout<<"---------------------------------"<<endl;
-    // cout<<"BFS..."<<endl;
-    // auto startBFS = std::chrono::high_resolution_clock::now();
+    // cout<<"IDA Star..."<<endl;
+    // auto endIDAStar = std::chrono::high_resolution_clock::now();
 
-    // bfs(game, game.Lights, game.FinalLights);
-
-    // auto endBFS = std::chrono::high_resolution_clock::now();
-    // std::chrono::duration<double> durationBFS = endBFS - startBFS;
-    // cout<<"Tiempo (segundos): "<<durationBFS.count()<<endl;
-    // cout<<"Nodos visitados: "<<NodosBFS<<endl;
+    // int a = idaStar(game);
+    // cout << "Valor idea " << a << endl;
+    // std::chrono::duration<double> durationIDAStar = endIDAStar - startIDAStar;
+    // cout<<"Tiempo (segundos): "<<durationIDAStar.count()<<endl;
+    // cout<<"Nodos Visitados: "<<NodosIDAStar<<endl;
     // cout<<"Camino mas corto: "<<endl;
-
-
-    // cout<<"---------------------------------"<<endl;
-    // cout<<"A Star..."<<endl;
-    // auto startAStar = std::chrono::high_resolution_clock::now();
-
-    // aStar(game, game.FinalLights);
-
-    // auto endAStar = std::chrono::high_resolution_clock::now();
-    // std::chrono::duration<double> durationAStar = endAStar - startAStar;
-    // cout<<"Tiempo (segundos): "<<durationAStar.count()<<endl;
-    // cout<<"Nodos Visitados: "<<NodosAStar<<endl;
-    // cout<<"Camino mas corto: "<<endl;
-
-    auto startIDAStar = std::chrono::high_resolution_clock::now();
-    cout<<"---------------------------------"<<endl;
-    cout<<"IDA Star..."<<endl;
-    auto endIDAStar = std::chrono::high_resolution_clock::now();
-
-    idaStar(game);
-
-    std::chrono::duration<double> durationIDAStar = endIDAStar - startIDAStar;
-    cout<<"Tiempo (segundos): "<<durationIDAStar.count()<<endl;
-    cout<<"Nodos Visitados: "<<NodosIDAStar<<endl;
-    cout<<"Camino mas corto: "<<endl;
 
     return 0;
 
